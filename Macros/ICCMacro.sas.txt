@@ -1,0 +1,87 @@
+%macro intracc(data=_LAST_,target=TARGET???,rater=RATER???,
+               depvar=DEPVAR???,nrater=0,out=_DATA_,print=1);
+
+title2 'Intraclass Correlations for Inter-Rater Reliability';
+proc glm data=&data outstat=_stats_
+  %if &print<3 %then noprint; ;
+  * use glm to get sums of squares for use in reliability calculation;
+  class &target &rater;
+  model &depvar = &target &rater ;
+  run;
+
+proc sort data=_stats_;
+  by _name_ _SOURCE_;
+  run;
+
+%if &print>=2 %then %do;
+proc print data=_stats_;
+  title3 'Statistics from 2-way ANOVA w/o Interaction';
+  run;
+%end;
+
+data &out;
+  title3 'Calculate all reliabilities in one fell swoop';
+  retain msw msb wms ems edf bms bdf jms jdf k;
+  set _stats_;
+  by _name_;
+  if upcase(_type_)='SS1' then delete;
+  if upcase(_source_)='ERROR' then do;
+     ems=ss/df;
+     edf=df;
+  end;
+  if upcase(_source_)="%upcase(&target)" then do;
+     bms=ss/df;
+     msb=bms;
+     bdf=df;
+  end;
+  if upcase(_source_)="%upcase(&rater)" then do;
+     jms=ss/df;
+     jdf=df;
+     k=df+1;
+  end;
+  if last._name_ then do;
+    msw=((ems*edf)+(jms*jdf))/(edf+jdf);
+    wms=msw;
+    n=bdf+1;
+    theta=(msb-msw)/(k*msw);                   * used in Winer formulae;
+    wsingle=theta/(1+theta);                   * Winer ICC(1,1);
+    wk=(k*theta)/(1+k*theta);                  * Winer ICC(1,k);
+    %if &nrater %then %do;
+    wnrater=(&nrater*theta)/(1+&nrater*theta); * Winer reliability
+                                                 if mean of nraters;
+    %end;
+    sfsingle=(bms-wms)/(bms+(k-1)*wms);        * ICC(1,1);
+    sfrandom=(bms-ems)/
+        ((bms)+((k-1)*ems)+((k*(jms-ems))/n)); * ICC(2,1);
+    sffixed=(bms-ems)/(bms+((k-1)*ems));       * ICC(3,1);
+    sfk=(bms-wms)/bms;                         * ICC(1,k);
+    sfrandk=(bms-ems)/(bms+((jms-ems)/n));     * ICC(2,k);
+    sffixedk=(bms-ems)/bms;                    * ICC(3,k) with no
+                                                 interaction assumption;
+    output;
+  end;
+  label wsingle="Winer reliability: single score"
+        wk="Winer reliability: mean of k scores"
+        %if &nrater %then %do;
+        wnrater="Winer reliability: mean of &nrater scores"
+        %end;
+        sfsingle="Shrout-Fleiss reliability: single score"
+        sfrandom="Shrout-Fleiss reliability: random set"
+        sffixed="Shrout-Fleiss reliability: fixed set"
+        sfk="Shrout-Fleiss reliability: mean k scores"
+        sfrandk="Shrout-Fleiss rel: rand set mean k scrs"
+        sffixedk="Shrout-Fleiss rel: fxd set mean k scrs";
+run;
+
+%if &print %then %do;
+proc print label;
+  id _name_;
+  var msw msb wms ems edf bms bdf jms jdf k theta
+      wsingle wk %if &nrater %then wnrater;
+      sfsingle sfrandom sffixed sfk sfrandk sffixedk;
+run;
+%end;
+
+%mend intracc;
+
+
