@@ -1,3 +1,17 @@
+*******************************************************
+ARRAYS:
+Ways to go through multple variables per observation and
+take the same action
+********************************************************;
+
+******************************
+EXAMPLE 1:
+stores 13 possible readmit dates and 13 discharge
+dates in the arrays. Then uses a loop to go through 
+the list and determine whether the patient was in or
+out of the hospital in a given month (36 months checked)
+*****************************;
+
 libname r "C:\Users\sdperez.EMORYUNIVAD\Desktop\My Documents\Studies\TransplantOutcomes";
 libname library "C:\Users\sdperez.EMORYUNIVAD\Desktop\My Documents\Studies\TransplantOutcomes";
 data test; set r.transplant_outcomes_sebastian;
@@ -25,6 +39,70 @@ Time(j)=j;
 	end;
 end;
 output;
-
 run;
+
+******************************
+EXAMPLE 2:
+If the variables are in sequence then you can
+use this shortcut to put them into the array
+**********************************;
+libname r 'C:\Users\sdperez.EMORYUNIVAD\Desktop\My Documents\CurrentStudies\ShipraReadmit\Data';
+
+*Select a subset of PUF file to work with;
+proc surveyselect  data=r.Vascular
+method=srs n=200 out=Sample;
+run;
+
+data sample2; set sample;
+array labs(13) PRSODM--PRPT; *notice 13 variables are put into the array;
+do i = 1 to 13;
+ if labs(i)=-99 then labs(i)=.;
+end;
+output;
+run;
+
+*******************************
+EXAMPLE 3:
+You don't need to specify the dimension
+of the array. Here, all numeric variables
+are put into array a and all character into
+array b.
+****************************** ;
+data sample3 ;
+  set sample; 
+    array _a_(*) _numeric_;
+   array _b_(*) _character_;
+   var1=dim(_a_);
+   var2=dim(_b_);
+   output;
+run;
+********************************
+In the following case we put every variable name
+into a dataset(as observations);
+
+data new(keep=name type);
+   set sample;
+      /* all character variables in old */ 
+   array abc{*} _character_;   
+      /* all numeric variables in old */ 
+   array def{*} _numeric_;     
+      /* name is not in either array */
+   length name $32;             
+   do i=1 to dim(abc);
+         /* get name of character variable */
+      call vname(abc{i},name); 
+	  type='number';
+         /* write name and type to an observation */
+      output;                  
+   end;
+   do j=1 to dim(def);
+         /* get name of numeric variable */
+      call vname(def{j},name); 	*also can do name=vname(def(i));
+	   type='char';
+         /* write name  and type to an observation */
+      output;                  
+   end;
+   stop;
+run;
+*see also varnum function varlabel and vartype;
 
