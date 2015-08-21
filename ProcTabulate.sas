@@ -5,7 +5,12 @@ Examples of proc tabulate;
 First we look at a set of variables (rows) and then choose to split by 
 whether they did or didn return to the OR;
 
+libname r "H:\My Documents\Studies\SanniBMIcomps";
+data return3; set r.subset_of_revised; run;
+ods trace on;
+ods output Table=example;
 proc tabulate data=return3;
+footnote ;
 class smoke etoh  hxcopd
 cpneumon ascites esovar hxchf hxmi prvpci
 prvpcs hxangina hypermed renafail dialysis impsens
@@ -18,6 +23,7 @@ hemi bleeddis, returnor*(n='n'*f=8.0 colpctn="%")
  After each variable you can define how you wan that displayed/formatted with an '*'.Here we requested counts (n)
  and named that column 'n' then gave a format of 8.0. We also request another column for percent.;
 run; 
+ods output close;
 
 
 *Another example. In this example we converted categorical variables into 1s and 0s so we can do sums (instead of counts)
